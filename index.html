@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Simple Web Proxy</title>
+  <title>Secure Web Proxy</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+    input { width: 70%; padding: 8px; }
+    button { padding: 8px 15px; background: #007BFF; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #error { color: red; margin-top: 10px; }
+  </style>
 </head>
 <body>
-  <h2>Web Proxy Gateway</h2>
-  <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://www.google.com)" style="width: 300px;">
+  <h2>🌐 Secure Web Proxy</h2>
+  <input type="text" id="urlInput" placeholder="Enter a valid URL (e.g., https://example.com)">
   <button onclick="openViaProxy()">Go</button>
-  <p id="error" style="color: red;"></p>
+  <p id="error"></p>
 
   <script>
     function openViaProxy() {
@@ -15,19 +22,41 @@
       const errorElement = document.getElementById("error");
       errorElement.textContent = "";
 
+      // Basic validation
       if (!userUrl) {
-        errorElement.textContent = "Please enter a URL.";
+        errorElement.textContent = "⚠️ Please enter a URL.";
         return;
       }
 
+      // Force HTTPS if missing protocol
+      let processedUrl = userUrl;
       if (!userUrl.startsWith("http://") && !userUrl.startsWith("https://")) {
-        errorElement.textContent = "URL must start with http:// or https://";
+        processedUrl = "https://" + userUrl; // Default to HTTPS
+      }
+
+      // Validate URL format
+      try {
+        new URL(processedUrl); // Throws error if invalid
+      } catch (e) {
+        errorElement.textContent = "❌ Invalid URL. Example: https://example.com";
         return;
       }
 
-      // Replace with your proxy server URL (e.g., https://your-proxy.com?url=)
-      const proxyUrl = "https://cors-anywhere.herokuapp.com/" + userUrl;
-      window.location.href = proxyUrl; // Opens in the same tab
+      // Use CORS Anywhere (with Origin header)
+      const proxyUrl = "https://cors-anywhere.herokuapp.com/" + processedUrl;
+      
+      // Set Origin header (required by CORS Anywhere)
+      fetch(proxyUrl, { 
+        headers: { "Origin": window.location.origin } 
+      })
+        .then(response => {
+          if (!response.ok) throw new Error("Proxy fetch failed.");
+          window.location.href = proxyUrl; // Redirect on success
+        })
+        .catch(err => {
+          errorElement.textContent = "🔴 Proxy error. Try another URL or check if CORS Anywhere is up.";
+          console.error(err);
+        });
     }
   </script>
 </body>
