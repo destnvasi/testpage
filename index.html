@@ -3,61 +3,61 @@
 <head>
   <title>Secure Web Proxy</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
-    input { width: 70%; padding: 8px; }
-    button { padding: 8px 15px; background: #007BFF; color: white; border: none; cursor: pointer; }
-    button:hover { background: #0056b3; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
+    input { width: 70%; padding: 10px; font-size: 16px; }
+    button { padding: 10px 20px; background: #4285F4; color: white; border: none; cursor: pointer; }
     #error { color: red; margin-top: 10px; }
+    #status { color: green; margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h2>🌐 Secure Web Proxy</h2>
-  <input type="text" id="urlInput" placeholder="Enter a valid URL (e.g., https://example.com)">
+  <h2>🔒 Secure Web Proxy</h2>
+  <input type="text" id="urlInput" placeholder="https://example.com" autofocus>
   <button onclick="openViaProxy()">Go</button>
   <p id="error"></p>
+  <p id="status"></p>
 
   <script>
-    function openViaProxy() {
+    async function openViaProxy() {
       const userUrl = document.getElementById("urlInput").value.trim();
       const errorElement = document.getElementById("error");
+      const statusElement = document.getElementById("status");
+      
       errorElement.textContent = "";
+      statusElement.textContent = "";
 
-      // Basic validation
+      // Validate URL
       if (!userUrl) {
-        errorElement.textContent = "⚠️ Please enter a URL.";
+        errorElement.textContent = "Please enter a URL";
         return;
       }
 
-      // Force HTTPS if missing protocol
+      // Add https:// if missing
       let processedUrl = userUrl;
-      if (!userUrl.startsWith("http://") && !userUrl.startsWith("https://")) {
-        processedUrl = "https://" + userUrl; // Default to HTTPS
+      if (!/^https?:\/\//i.test(userUrl)) {
+        processedUrl = "https://" + userUrl;
       }
 
       // Validate URL format
       try {
-        new URL(processedUrl); // Throws error if invalid
+        new URL(processedUrl);
       } catch (e) {
-        errorElement.textContent = "❌ Invalid URL. Example: https://example.com";
+        errorElement.textContent = "Invalid URL format. Example: https://example.com";
         return;
       }
 
-      // Use CORS Anywhere (with Origin header)
-      const proxyUrl = "https://cors-anywhere.herokuapp.com/" + processedUrl;
+      // Encode URL for proxy
+      const encodedUrl = encodeURIComponent(processedUrl);
       
-      // Set Origin header (required by CORS Anywhere)
-      fetch(proxyUrl, { 
-        headers: { "Origin": window.location.origin } 
-      })
-        .then(response => {
-          if (!response.ok) throw new Error("Proxy fetch failed.");
-          window.location.href = proxyUrl; // Redirect on success
-        })
-        .catch(err => {
-          errorElement.textContent = "🔴 Proxy error. Try another URL or check if CORS Anywhere is up.";
-          console.error(err);
-        });
-    }
-  </script>
-</body>
-</html>
+      // Using CORS Anywhere with required headers
+      const proxyUrl = `https://cors-anywhere.herokuapp.com/${processedUrl}`;
+      
+      statusElement.textContent = "Loading...";
+
+      try {
+        // First make a request with proper headers
+        const response = await fetch(proxyUrl, {
+          headers: {
+            'Origin': window.location.origin,
+            'X-Requested-With': 'XMLHttpRequest'
+          }
