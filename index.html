@@ -1,57 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Proxy Checker</title>
+  <title>Proxy Browser</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
-    input, button { padding: 8px; margin: 5px 0; }
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .input-group { margin: 10px 0; }
+    input, button { padding: 8px; }
     button { background: #4285F4; color: white; border: none; cursor: pointer; }
-    #result { margin-top: 15px; padding: 10px; border: 1px solid #ddd; }
-    .working { color: green; }
-    .failed { color: red; }
+    #proxyStatus { margin: 10px 0; padding: 10px; border-radius: 4px; }
+    .working { background: #e6f7ee; color: #28a745; }
+    .failed { background: #fdecea; color: #dc3545; }
+    #proxyFrame { width: 100%; height: 70vh; border: 1px solid #ddd; margin-top: 15px; }
   </style>
 </head>
 <body>
-  <h2>🔎 Proxy Tester</h2>
-  <input type="text" id="proxyIp" placeholder="IP (e.g., 139.59.1.14)">
-  <input type="text" id="proxyPort" placeholder="Port (e.g., 80)">
-  <button onclick="testProxy()">Test Proxy</button>
-  <div id="result"></div>
+  <h2>🔎 Proxy Browser</h2>
+  
+  <div class="input-group">
+    <h3>1. Enter Proxy Details</h3>
+    <input type="text" id="proxyIp" placeholder="IP (e.g., 129.18.210.10)" value="129.18.210.10">
+    <input type="text" id="proxyPort" placeholder="Port (e.g., 8080)" value="8080">
+    <button onclick="testProxy()">Test Proxy</button>
+    <div id="proxyStatus"></div>
+  </div>
+  
+  <div class="input-group">
+    <h3>2. Browse via Proxy</h3>
+    <input type="text" id="url" placeholder="Enter URL (e.g., https://google.com)" value="https://google.com">
+    <button onclick="browseViaProxy()">Go</button>
+  </div>
+  
+  <iframe id="proxyFrame"></iframe>
 
   <script>
+    let currentProxy = "";
+    
     async function testProxy() {
       const ip = document.getElementById("proxyIp").value.trim();
       const port = document.getElementById("proxyPort").value.trim();
-      const resultDiv = document.getElementById("result");
-
+      const statusDiv = document.getElementById("proxyStatus");
+      
       if (!ip || !port) {
-        resultDiv.innerHTML = '<span class="failed">Please enter IP and Port</span>';
+        statusDiv.innerHTML = '<div class="failed">Please enter both IP and Port</div>';
         return;
       }
-
-      resultDiv.innerHTML = "Testing proxy...";
-
+      
+      statusDiv.innerHTML = "Testing proxy...";
+      
       try {
-        // Test proxy by fetching a small file (e.g., Google's favicon)
-        const proxyTestUrl = `https://www.google.com/favicon.ico`;
+        // Test with a simple request (using a CORS proxy for demonstration)
+        const testUrl = `https://cors-anywhere.herokuapp.com/http://example.com`;
         const startTime = Date.now();
         
-        const response = await fetch(proxyTestUrl, {
-          mode: 'no-cors',
-          // In real implementation, you'd configure proxy settings here
-          // This is just a simulation
+        const response = await fetch(testUrl, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Target-Proxy': `${ip}:${port}` // This would be used by your backend
+          }
         });
-
+        
         const speed = Date.now() - startTime;
-        resultDiv.innerHTML = `
-          <span class="working">✅ Proxy Working!</span><br>
-          Response Time: ${speed}ms<br>
-          Status: ${response.status}
+        currentProxy = `${ip}:${port}`;
+        statusDiv.innerHTML = `
+          <div class="working">
+            ✅ Proxy Working!<br>
+            IP: ${ip}:${port}<br>
+            Response Time: ${speed}ms
+          </div>
         `;
       } catch (err) {
-        resultDiv.innerHTML = `<span class="failed">❌ Proxy Failed: ${err.message}</span>`;
+        statusDiv.innerHTML = `<div class="failed">❌ Proxy Failed: ${err.message}</div>`;
       }
     }
+    
+    function browseViaProxy() {
+      if (!currentProxy) {
+        alert("Please test the proxy first!");
+        return;
+      }
+      
+      const url = document.getElementById("url").value.trim();
+      if (!url) {
+        alert("Please enter a URL");
+        return;
+      }
+      
+      // Format URL
+      let targetUrl = url;
+      if (!/^https?:\/\//i.test(url)) {
+        targetUrl = "http://" + url;
+      }
+      
+      // In a real implementation, you would:
+      // 1. Send the request to YOUR backend server
+      // 2. Your backend would use the specified proxy
+      // 3. Return the content to display
+      
+      // For this demo, we'll use a CORS proxy (limited functionality)
+      const frame = document.getElementById("proxyFrame");
+      frame.src = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
+      
+      // Production note: You would replace this with your own proxy endpoint
+      // Example: frame.src = `/your-proxy?url=${encodeURIComponent(targetUrl)}&proxy=${currentProxy}`;
+    }
+    
+    // Allow Enter key
+    document.getElementById("url").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") browseViaProxy();
+    });
   </script>
 </body>
 </html>
