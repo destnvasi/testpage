@@ -1,63 +1,102 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Secure Web Proxy</title>
+  <title>Raw Proxy Tester</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px; }
-    input { width: 70%; padding: 10px; font-size: 16px; }
-    button { padding: 10px 20px; background: #4285F4; color: white; border: none; cursor: pointer; }
-    #error { color: red; margin-top: 10px; }
-    #status { color: green; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    input, button { padding: 10px; margin: 5px 0; }
+    button { background: #4285F4; color: white; border: none; cursor: pointer; }
+    #log { background: #f5f5f5; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
+    .error { color: red; }
+    .success { color: green; }
   </style>
 </head>
 <body>
-  <h2>🔒 Secure Web Proxy</h2>
-  <input type="text" id="urlInput" placeholder="https://example.com" autofocus>
-  <button onclick="openViaProxy()">Go</button>
-  <p id="error"></p>
-  <p id="status"></p>
+  <h2>🔧 Raw Proxy Tester</h2>
+  
+  <!-- Proxy Test Section -->
+  <div>
+    <h3>1. Test Proxy</h3>
+    <input type="text" id="proxyIp" placeholder="Proxy IP (e.g., 139.59.1.14)">
+    <input type="text" id="proxyPort" placeholder="Port (e.g., 80)">
+    <button onclick="testProxy()">Check Proxy</button>
+    <div id="proxyLog"></div>
+  </div>
+
+  <!-- Browse via Proxy Section -->
+  <div>
+    <h3>2. Browse via Proxy</h3>
+    <input type="text" id="url" placeholder="URL (e.g., https://google.com)">
+    <button onclick="browseViaProxy()">Go</button>
+  </div>
+
+  <!-- Hidden iframe for proxy browsing -->
+  <iframe id="proxyFrame" style="width: 100%; height: 400px; border: 1px solid #ddd; margin-top: 20px; display: none;"></iframe>
 
   <script>
-    async function openViaProxy() {
-      const userUrl = document.getElementById("urlInput").value.trim();
-      const errorElement = document.getElementById("error");
-      const statusElement = document.getElementById("status");
-      
-      errorElement.textContent = "";
-      statusElement.textContent = "";
+    // Test Proxy Function
+    async function testProxy() {
+      const ip = document.getElementById("proxyIp").value.trim();
+      const port = document.getElementById("proxyPort").value.trim();
+      const log = document.getElementById("proxyLog");
 
-      // Validate URL
-      if (!userUrl) {
-        errorElement.textContent = "Please enter a URL";
+      log.innerHTML = "Testing proxy...";
+      
+      if (!ip || !port) {
+        log.innerHTML = '<span class="error">Please enter IP and Port</span>';
         return;
       }
 
-      // Add https:// if missing
-      let processedUrl = userUrl;
-      if (!/^https?:\/\//i.test(userUrl)) {
-        processedUrl = "https://" + userUrl;
-      }
-
-      // Validate URL format
       try {
-        new URL(processedUrl);
-      } catch (e) {
-        errorElement.textContent = "Invalid URL format. Example: https://example.com";
+        // Use ip-api.com to get proxy country (no CORS needed)
+        const response = await fetch(`http://ip-api.com/json/${ip}`);
+        const data = await response.json();
+        
+        if (data.status === "success") {
+          log.innerHTML = `
+            <span class="success">✅ Proxy Works!</span><br>
+            <strong>IP:</strong> ${ip}<br>
+            <strong>Country:</strong> ${data.country} (${data.countryCode})<br>
+            <strong>ISP:</strong> ${data.isp}
+          `;
+        } else {
+          throw new Error("Invalid IP");
+        }
+      } catch (err) {
+        log.innerHTML = `<span class="error">❌ Proxy Failed: ${err.message || "Check IP/Port"}</span>`;
+      }
+    }
+
+    // Browse via Proxy Function
+    function browseViaProxy() {
+      const ip = document.getElementById("proxyIp").value.trim();
+      const port = document.getElementById("proxyPort").value.trim();
+      const url = document.getElementById("url").value.trim();
+      const iframe = document.getElementById("proxyFrame");
+
+      if (!ip || !port) {
+        alert("Please test proxy first!");
         return;
       }
 
-      // Encode URL for proxy
-      const encodedUrl = encodeURIComponent(processedUrl);
-      
-      // Using CORS Anywhere with required headers
-      const proxyUrl = `https://cors-anywhere.herokuapp.com/${processedUrl}`;
-      
-      statusElement.textContent = "Loading...";
+      if (!url) {
+        alert("Please enter a URL");
+        return;
+      }
 
-      try {
-        // First make a request with proper headers
-        const response = await fetch(proxyUrl, {
-          headers: {
-            'Origin': window.location.origin,
-            'X-Requested-With': 'XMLHttpRequest'
-          }
+      // Format URL (add http:// if missing)
+      let targetUrl = url;
+      if (!/^https?:\/\//i.test(url)) {
+        targetUrl = "http://" + url; // Proxies typically need HTTP
+      }
+
+      // Use iframe to load content via proxy (same tab)
+      iframe.style.display = "block";
+      iframe.src = `https://cors-anywhere.herokuapp.com/${targetUrl}`; // Replace with your proxy backend
+      
+      // For direct proxy usage (not recommended due to CORS):
+      // iframe.src = `http://${ip}:${port}/${targetUrl}`;
+    }
+  </script>
+</body>
+</html>
